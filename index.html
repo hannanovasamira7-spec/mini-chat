@@ -12,9 +12,15 @@
       display: flex; flex-direction: column; height: 100vh;
     }
     header {
-      background: #242f3d; padding: 14px; text-align: center;
+      background: #242f3d; padding: 12px 15px;
+      display: flex; justify-content: space-between; align-items: center;
       font-weight: bold; border-bottom: 1px solid #0e1621;
     }
+    .clear-btn {
+      background: #3a2328; color: #ff7b7b; border: 1px solid #5c3138;
+      padding: 6px 12px; border-radius: 6px; font-size: 13px; cursor: pointer;
+    }
+    .clear-btn:hover { background: #4d2c33; }
     #messages {
       flex: 1; padding: 15px; overflow-y: auto;
       display: flex; flex-direction: column; gap: 10px;
@@ -32,15 +38,20 @@
       flex: 1; padding: 10px; border-radius: 8px; border: none;
       background: #17212b; color: #fff; outline: none; font-size: 16px;
     }
-    button {
+    button[type="submit"] {
       padding: 10px 18px; border: none; border-radius: 8px;
       background: #5288c1; color: #fff; font-weight: bold; cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <header id="header">Чат</header>
+  <header>
+    <span id="header-title">Чат</span>
+    <button type="button" id="clear-btn" class="clear-btn">Очистить</button>
+  </header>
+
   <div id="messages"></div>
+
   <form id="chat-form">
     <input type="text" id="msg-input" placeholder="Написать сообщение..." required autocomplete="off" />
     <button type="submit">➤</button>
@@ -48,7 +59,7 @@
 
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getDatabase, ref, push, onChildAdded, remove, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyBvXg3676wsVVYv5K1LVy5hb_Zw8C5TT18",
@@ -71,12 +82,13 @@
     }
 
     const userName = tg?.initDataUnsafe?.user?.first_name || prompt("Как тебя зовут?") || "Гость";
-    document.getElementById("header").textContent = `Чат • Вы: ${userName}`;
+    document.getElementById("header-title").textContent = `Чат • Вы: ${userName}`;
 
     const messagesDiv = document.getElementById("messages");
     const form = document.getElementById("chat-form");
     const input = document.getElementById("msg-input");
 
+    // Отправка сообщения
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const text = input.value.trim();
@@ -91,6 +103,7 @@
       input.value = "";
     });
 
+    // Добавление новых сообщений на экран
     onChildAdded(messagesRef, (snapshot) => {
       const data = snapshot.val();
 
@@ -100,13 +113,26 @@
       const authorEl = document.createElement("div");
       authorEl.className = "author";
       authorEl.textContent = data.name;
-
       const textEl = document.createElement("div");
       textEl.textContent = data.text;
 
       msgEl.append(authorEl, textEl);
       messagesDiv.appendChild(msgEl);
       messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    });
+
+    // Кнопка очистки всей переписки
+    document.getElementById("clear-btn").addEventListener("click", () => {
+      if (confirm("Удалить всю переписку для всех участников?")) {
+        remove(messagesRef);
+      }
+    });
+
+    // Мгновенная очистка экрана у всех, если ветка messages в базе стала пустой
+    onValue(messagesRef, (snapshot) => {
+      if (!snapshot.exists()) {
+        messagesDiv.innerHTML = "";
+      }
     });
   </script>
 </body>
